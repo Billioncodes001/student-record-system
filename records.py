@@ -1,5 +1,6 @@
 """Validated student records with atomic JSON persistence and stale-write protection."""
 import csv
+import io
 import fcntl
 import json
 import math
@@ -7,10 +8,23 @@ import os
 import re
 import tempfile
 from datetime import date
+from dataclasses import dataclass
 from pathlib import Path
 
 DEPARTMENTS = ("Computer Science", "Business Administration", "Engineering", "Science Technology", "Mass Communication")
 LEVELS = ("ND 1", "ND 2", "HND 1", "HND 2")
+CSV_FIELDS = ("student_id", "name", "email", "department", "level", "year", "gpa")
+MAX_IMPORT_BYTES = 2 * 1024 * 1024
+MAX_IMPORT_ROWS = 2000
+
+
+@dataclass(frozen=True)
+class ImportPreview:
+    revision: int
+    records: tuple
+    additions: int
+    unchanged: int
+    errors: tuple
 
 
 class RecordError(ValueError):
@@ -119,11 +133,74 @@ class RecordStore:
             raise RecordError("The selected student no longer exists.")
         self._commit(records)
 
+    def preview_import(self, path):
+        """Parse a bounded CSV snapshot without changing the registry."""
+        with Path(path).open("rb") as source:
+            raw = source.read(MAX_IMPORT_BYTES + 1)
+        if len(raw) > MAX_IMPORT_BYTES:
+            raise RecordError("CSV files must be no larger than 2 MiB.")
+        try:
+            reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""), strict=True)
+            headers = next(reader, [])
+            if len(headers) != len(CSV_FIELDS) or set(headers) != set(CSV_FIELDS):
+                raise RecordError("Use exactly these CSV headers: " + ", ".join(CSV_FIELDS))
+            records, errors, seen = [], [], set()
+            existing = {row["student_id"]: row for row in self._records}
+            unchanged = 0
+            for index, values in enumerate(reader, start=1):
+                if index > MAX_IMPORT_ROWS:
+                    raise RecordError("Import at most 2,000 rows at a time.")
+                if not values or not any(value.strip() for value in values):
+                    continue
+                try:
+                    if len(values) != len(headers):
+                        raise RecordError("The number of cells does not match the headers.")
+                    record = validate(dict(zip(headers, values)))
+                    student_id = record["student_id"]
+                    if student_id in seen:
+                        raise RecordError(f"Duplicate student ID {student_id} in this file.")
+                    seen.add(student_id)
+                    if student_id in existing:
+                        if existing[student_id] != record:
+                            raise RecordError(f"{student_id} already exists with different details. Edit it separately; import never overwrites records.")
+                        unchanged += 1
+                    records.append(record)
+                except RecordError as error:
+                    errors.append(f"Row {index + 1}: {error}")
+            if not records and not errors:
+                errors.append("The file contains no student records.")
+            return ImportPreview(self.revision, tuple(records), len(records) - unchanged, unchanged, tuple(errors))
+        except (UnicodeDecodeError, csv.Error) as error:
+            raise RecordError("Use a valid UTF-8 CSV file; its contents could not be parsed.") from error
+
+    def commit_import(self, preview):
+        if not isinstance(preview, ImportPreview) or preview.errors:
+            raise RecordError("Fix all CSV errors and preview the file again before importing.")
+        if preview.revision != self.revision:
+            raise RecordError("Records changed after this preview. Preview the file again.")
+        existing = {row["student_id"]: row for row in self._records}
+        additions, seen = [], set()
+        for values in preview.records:
+            record = validate(values)
+            student_id = record["student_id"]
+            if student_id in seen:
+                raise RecordError("Duplicate student IDs in the import preview.")
+            seen.add(student_id)
+            if student_id in existing and existing[student_id] != record:
+                raise RecordError("Import cannot overwrite existing records.")
+            if student_id not in existing:
+                additions.append(record)
+        if additions:
+            self._commit([*self._records, *additions])
+        elif self._read()[0] != self.revision:
+            raise RecordError("The file changed in another window. Reload before importing.")
+        return len(additions)
+
     def export_csv(self, path):
         target = Path(path)
         if target.resolve() in {self.path.resolve(), self.path.with_suffix(self.path.suffix + ".lock").resolve()}:
             raise RecordError("Export to a different file, not the record database.")
-        fields = ("student_id", "name", "email", "department", "level", "year", "gpa")
+        fields = CSV_FIELDS
         with target.open("w", newline="", encoding="utf-8-sig") as stream:
             writer = csv.writer(stream)
             writer.writerow(fields)

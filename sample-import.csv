@@ -1,0 +1,3 @@
+student_id,name,email,department,level,year,gpa
+DEMO/101,Ada Example,ada@example.com,Computer Science,ND 1,2025,3.75
+DEMO/102,Tunde Sample,tunde@example.com,Engineering,HND 1,2025,3.50

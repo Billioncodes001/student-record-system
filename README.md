@@ -2,6 +2,12 @@
 
 A local Python/Tkinter desktop workspace for student records: create, edit, delete, search and export a directory.
 
+## Spreadsheet intake
+
+Use **Import CSV** to review a spreadsheet before importing it. [sample-import.csv](sample-import.csv) provides fictional example rows and the exact headers: `student_id,name,email,department,level,year,gpa`. UTF-8 CSV with or without a BOM is accepted, up to 2 MiB and 2,000 rows per import. Header order may vary; missing, duplicate or unknown headers are rejected.
+
+The preview reports new, unchanged and invalid/conflicting records. An existing ID with identical details is skipped; different details block the entire import. No existing record is silently overwritten. Confirming imports the reviewed snapshot in one atomic write. If the registry changes after preview, reload and preview again. Cancelling leaves the registry unchanged. Exported spreadsheet formula escapes remain literal text on re-import, so review any such fields explicitly.
+
 This is a new implementation of the student-record concept in Josiah Adeyemo's portfolio, not recovered code. No real student data is included.
 
 ![Registrar desktop interface showing the record editor and student directory](docs/preview.webp)
@@ -19,7 +25,7 @@ python3 app.py --smoke-test
 python3 preview.py
 ```
 
-The smoke test opens the actual GUI and exercises save, edit, search and removal with temporary synthetic records. A graphical desktop is required.
+The smoke test opens the actual GUI and exercises save, edit, search, removal, CSV preview and confirmed import with temporary synthetic records. A graphical desktop is required.
 
 `preview.py` opens the same interface with disposable fictional records for screenshots. It does not read or modify your normal student data, and removes its temporary directory when the window closes.
 

@@ -72,6 +72,10 @@ class Registrar(ttk.Frame):
         ttk.Label(toolbar, text="Student directory", style="Section.TLabel").pack(side="left")
         ttk.Button(toolbar, text="Export CSV", command=self.export).pack(side="right")
         ttk.Button(toolbar, text="Reload", command=self.reload).pack(side="right", padx=6)
+        import_bar = ttk.Frame(library)
+        import_bar.pack(fill="x", pady=(0, 10))
+        ttk.Button(import_bar, text="Import CSV", command=self.import_csv).pack(side="left")
+        ttk.Label(import_bar, text="Preview first. Existing records are never overwritten.", style="Muted.TLabel").pack(side="left", padx=10)
         ttk.Label(library, text="Search names, IDs, departments or levels", style="Muted.TLabel").pack(anchor="w", pady=(0, 6))
         self.query = tk.StringVar()
         ttk.Entry(library, textvariable=self.query).pack(fill="x", pady=(0, 14))
@@ -198,6 +202,56 @@ class Registrar(ttk.Frame):
             except (RecordError, OSError) as error:
                 messagebox.showerror("Could not export records", str(error), parent=self.root)
 
+    def import_csv(self):
+        path = filedialog.askopenfilename(parent=self.root, title="Preview student CSV", filetypes=[("CSV spreadsheet", "*.csv")])
+        if not path:
+            return
+        try:
+            preview = self.store.preview_import(path)
+        except (RecordError, OSError) as error:
+            messagebox.showerror("Could not preview CSV", str(error), parent=self.root)
+            return
+        self.show_import_preview(preview)
+
+    def show_import_preview(self, preview):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review CSV import")
+        dialog.geometry("820x540")
+        dialog.transient(self.root)
+        frame = ttk.Frame(dialog, padding=24)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Review before importing", style="Section.TLabel").pack(anchor="w")
+        ttk.Label(frame, text=f"{preview.additions} new records / {preview.unchanged} unchanged / {len(preview.errors)} errors", style="Summary.TLabel").pack(anchor="w", pady=12)
+        ttk.Label(frame, text="Import is all-or-nothing. Existing records will not be replaced.", style="Muted.TLabel").pack(anchor="w")
+        detail = tk.Text(frame, wrap="word", height=13, bg="white", fg=INK, font=("Menlo", 10), padx=12, pady=12)
+        detail.pack(fill="both", expand=True, pady=14)
+        if preview.errors:
+            detail.insert("end", "\n\n".join(preview.errors[:30]))
+            if len(preview.errors) > 30:
+                detail.insert("end", f"\n\n...and {len(preview.errors) - 30} more errors. Fix the file and preview again.")
+        else:
+            for row in preview.records[:30]:
+                detail.insert("end", f'{row["student_id"]} / {row["name"]} / {row["department"]} / {row["level"]}\n')
+            if len(preview.records) > 30:
+                detail.insert("end", f"\nShowing the first 30 of {len(preview.records)} valid records.")
+        detail.configure(state="disabled")
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x")
+        def confirm():
+            try:
+                count = self.store.commit_import(preview)
+                self.clear()
+                self.refresh()
+                self.status.set(f"Imported {count} students. Existing records were preserved.")
+                dialog.destroy()
+            except (RecordError, OSError) as error:
+                messagebox.showerror("Import not applied", str(error), parent=dialog)
+                dialog.destroy()
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
+        ttk.Button(buttons, text=f"Import {preview.additions} new records", command=confirm, state="disabled" if preview.errors or not preview.additions else "normal", style="Primary.TButton").pack(side="right", padx=10)
+        dialog.grab_set()
+        return dialog
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -233,6 +287,23 @@ def main():
                 app.refresh()
                 assert not app.tree.get_children()
                 print("PASS: actual Tkinter window, save, selection, edit, search and delete refresh.")
+                incoming = RecordStore(Path(directory) / "incoming.json")
+                incoming.save(sample)
+                incoming.export_csv(Path(directory) / "incoming.csv")
+                preview = app.store.preview_import(Path(directory) / "incoming.csv")
+                dialog = app.show_import_preview(preview)
+                root.update()
+                assert len(app.tree.get_children()) == 0
+                def children(widget):
+                    for child in widget.winfo_children():
+                        yield child
+                        yield from children(child)
+                confirm = next(widget for widget in children(dialog) if isinstance(widget, ttk.Button) and str(widget.cget("text")).startswith("Import 1"))
+                confirm.invoke()
+                root.update()
+                assert len(app.tree.get_children()) == 1
+                assert "Imported 1" in app.status.get()
+                print("PASS: CSV preview dialog, explicit confirmation and imported directory refresh.")
             root.destroy()
             return
         Registrar(root, RecordStore(args.data))
