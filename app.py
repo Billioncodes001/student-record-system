@@ -8,11 +8,11 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from records import DEPARTMENTS, LEVELS, RecordError, RecordStore
 
-PAPER = "#f4f1e9"
-INK = "#263d45"
-MUTED = "#64777b"
-LINE = "#d4dcd9"
-ACCENT = "#315f65"
+PAPER = "#eaf0f7"
+INK = "#203857"
+MUTED = "#536985"
+LINE = "#c4d2e2"
+ACCENT = "#315c9a"
 
 
 class Registrar(ttk.Frame):
@@ -32,15 +32,15 @@ class Registrar(ttk.Frame):
         ttk.Label(header, text="Registrar /", style="Brand.TLabel").pack(side="left")
         ttk.Label(header, text="BILLIONCODES  /  STUDENT AFFAIRS", style="Eyebrow.TLabel").pack(side="right")
         ttk.Separator(self).pack(fill="x", pady=(14, 16))
-        ttk.Label(self, text="A clear record.\nA brighter beginning.", style="Hero.TLabel").pack(anchor="w")
-        ttk.Label(self, text="One thoughtful home for the people shaping tomorrow.", style="Muted.TLabel").pack(anchor="w", pady=(8, 14))
+        ttk.Label(self, text="Student records / Academic registry", style="Hero.TLabel").pack(anchor="w")
+        ttk.Label(self, text="Admissions, academic details and a dependable local record of every student.", style="Muted.TLabel").pack(anchor="w", pady=(8, 14))
         self.summary = tk.StringVar()
         ttk.Label(self, textvariable=self.summary, style="Summary.TLabel").pack(anchor="w", pady=(0, 16))
         body = ttk.Frame(self)
         body.pack(fill="both", expand=True)
         form = ttk.Frame(body, style="Panel.TFrame", padding=20)
         form.pack(side="left", fill="y", padx=(0, 24))
-        self.form_title = tk.StringVar(value="Start a new chapter.")
+        self.form_title = tk.StringVar(value="New student record")
         ttk.Label(form, textvariable=self.form_title, style="PanelTitle.TLabel").pack(anchor="w", pady=(0, 14))
         self.values = {}
         fields = ttk.Frame(form, style="Panel.TFrame")
@@ -111,20 +111,20 @@ class Registrar(ttk.Frame):
         style.configure("TLabel", background=PAPER)
         style.configure("Brand.TLabel", font=("Trebuchet MS", 24, "bold"))
         style.configure("Eyebrow.TLabel", font=("Menlo", 9), foreground=MUTED)
-        style.configure("Hero.TLabel", font=("Georgia", 28), foreground=INK)
+        style.configure("Hero.TLabel", font=("Avenir Next", 25, "bold"), foreground=INK)
         style.configure("Muted.TLabel", foreground=MUTED, font=("Trebuchet MS", 10))
         style.configure("Summary.TLabel", font=("Trebuchet MS", 12, "bold"), foreground=ACCENT)
         style.configure("Section.TLabel", font=("Trebuchet MS", 17, "bold"))
-        style.configure("Panel.TFrame", background="#fffdf8")
-        style.configure("PanelTitle.TLabel", background="#fffdf8", font=("Georgia", 19))
-        style.configure("PanelLabel.TLabel", background="#fffdf8", font=("Trebuchet MS", 10))
-        style.configure("TEntry", fieldbackground="#fffdf8", padding=5, bordercolor=LINE)
-        style.configure("TCombobox", padding=5, fieldbackground="#fffdf8")
+        style.configure("Panel.TFrame", background="#ffffff")
+        style.configure("PanelTitle.TLabel", background="#ffffff", font=("Avenir Next", 18))
+        style.configure("PanelLabel.TLabel", background="#ffffff", font=("Trebuchet MS", 10))
+        style.configure("TEntry", fieldbackground="#ffffff", padding=5, bordercolor=LINE)
+        style.configure("TCombobox", padding=5, fieldbackground="#ffffff")
         style.configure("TButton", padding=(12, 8), borderwidth=1, bordercolor=LINE, background=PAPER)
         style.configure("Primary.TButton", background=ACCENT, foreground="#ffffff")
-        style.map("Primary.TButton", background=[("active", "#244c52")], foreground=[("active", "#ffffff")])
-        style.configure("Treeview", background="#fffdf8", fieldbackground="#fffdf8", rowheight=39, bordercolor=LINE)
-        style.configure("Treeview.Heading", background="#e5ece7", foreground=INK, font=("Trebuchet MS", 9, "bold"), padding=10)
+        style.map("Primary.TButton", background=[("active", "#234678")], foreground=[("active", "#ffffff")])
+        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", rowheight=39, bordercolor=LINE)
+        style.configure("Treeview.Heading", background="#dce7f4", foreground=INK, font=("Trebuchet MS", 9, "bold"), padding=10)
         style.map("Treeview", background=[("selected", ACCENT)], foreground=[("selected", "#ffffff")])
 
     def refresh(self):
@@ -140,7 +140,7 @@ class Registrar(ttk.Frame):
 
     def clear(self):
         self.selected_id = None
-        self.form_title.set("Start a new chapter.")
+        self.form_title.set("New student record")
         for key, variable in self.values.items():
             variable.set({"department": DEPARTMENTS[0], "level": LEVELS[0], "year": str(date.today().year), "gpa": "0.00"}.get(key, ""))
         self.delete_button.configure(state="disabled")
@@ -158,7 +158,7 @@ class Registrar(ttk.Frame):
         self.selected_id = record["student_id"]
         for key, variable in self.values.items():
             variable.set(str(record[key]))
-        self.form_title.set("Refine their record.")
+        self.form_title.set("Edit student record")
         self.delete_button.configure(state="normal")
 
     def save(self):
