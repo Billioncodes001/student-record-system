@@ -4,6 +4,10 @@ A local Python/Tkinter desktop workspace for student records: create, edit, dele
 
 This is a new implementation of the student-record concept in Josiah Adeyemo's portfolio, not recovered code. No real student data is included.
 
+![Registrar desktop interface showing the record editor and student directory](docs/preview.webp)
+
+_Screenshot of the actual Tkinter application with eight fictional records. This is a desktop app, not a browser mockup._
+
 ## Run
 
 Python 3.11+ with Tkinter is required on macOS or Linux. Tkinter is included with Python.org macOS installations; Linux may require the system python3-tk package. POSIX file locking is used; Windows is not currently supported.
@@ -12,9 +16,12 @@ Python 3.11+ with Tkinter is required on macOS or Linux. Tkinter is included wit
 python3 app.py
 python3 -m unittest -v
 python3 app.py --smoke-test
+python3 preview.py
 ```
 
 The smoke test opens the actual GUI and exercises save, edit, search and removal with temporary synthetic records. A graphical desktop is required.
+
+`preview.py` opens the same interface with disposable fictional records for screenshots. It does not read or modify your normal student data, and removes its temporary directory when the window closes.
 
 ## Data
 
